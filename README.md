@@ -5,17 +5,21 @@ An experimental BitTorrent client implemented in Python 3 using asyncio.
 The client is not a practical BitTorrent client, it lacks too many
 features to really be useful. It was implemented for fun in order to
 learn more about BitTorrent as well as Python's asyncio library.
- 
+
 The client currently only support downloading of data, although adding
 the remaining features regarding seeding and multi-file should not be
 that hard.
- 
+
 Current features:
 
 [*] Download pieces (leeching)
-[ ] Contact tracker periodically 
+
+[ ] Contact tracker periodically
+
 [ ] Seed (upload) pieces
+
 [ ] Support multi-file torrents
+
 [ ] Resume a download
 
 Even though it's not practical at this point, feel free to learn from
@@ -39,7 +43,7 @@ In order to download a torrent file, run this command:
     $ python pieces.py -v tests/data/bootfloppy-utils.img.torrent
 
 If everything goes well, your torrent should be downloaded and the
-program terminated. You can stop the client using `Ctrl + C`. 
+program terminated. You can stop the client using `Ctrl + C`.
 
 
 ## Design considerations
@@ -64,8 +68,8 @@ The `pieces.client.TorrentClient` is the center piece, it:
   to.
 
 * Determine the order in which the pieces should be requested from the
-  remote peers. 
-  
+  remote peers.
+
 * Shuts down the client once the download is complete.
 
 
@@ -81,7 +85,7 @@ The BitTorrent specifics is implemented in the `pieces.protocol` module
 where the `pieces.protocol.PeerConnection` sets up a connection to one
 of the remote peers retrieved from the tracker. This class handles the
 control flow of messages between the two peers.
-  
+
 BitTorrent is a binary protocol, and all decoding of messages is
 implemented as a _async iterator_ under he name
 `pieces.protocol.PeerStreamIterator`. The async part is that this
