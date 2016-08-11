@@ -12,15 +12,11 @@ that hard.
 
 Current features:
 
-[*] Download pieces (leeching)
-
-[ ] Contact tracker periodically
-
-[ ] Seed (upload) pieces
-
-[ ] Support multi-file torrents
-
-[ ] Resume a download
+- [x] Download pieces (leeching)
+- [ ] Contact tracker periodically
+- [ ] Seed (upload) pieces
+- [ ] Support multi-file torrents
+- [ ] Resume a download
 
 Even though it's not practical at this point, feel free to learn from
 it, steal from it, improve it, laugh at it or just ignore it.
