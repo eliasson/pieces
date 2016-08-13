@@ -284,6 +284,9 @@ class PeerStreamIterator:
                 raise StopAsyncIteration()
             except CancelledError:
                 raise StopAsyncIteration()
+            except StopAsyncIteration as e:
+                # Cath to stop logging
+                raise e
             except Exception:
                 logging.exception('Error when iterating over stream!')
                 raise StopAsyncIteration()

@@ -13,7 +13,7 @@ that hard.
 Current features:
 
 - [x] Download pieces (leeching)
-- [ ] Contact tracker periodically
+- [x] Contact tracker periodically
 - [ ] Seed (upload) pieces
 - [ ] Support multi-file torrents
 - [ ] Resume a download

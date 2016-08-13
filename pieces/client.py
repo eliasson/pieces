@@ -28,7 +28,7 @@ from pieces.protocol import PeerConnection, REQUEST_SIZE
 from pieces.tracker import Tracker
 
 # The number of max peer connections per TorrentClient
-MAX_PEER_CONNECTIONS = 12
+MAX_PEER_CONNECTIONS = 40
 
 
 class TorrentClient:
@@ -90,18 +90,24 @@ class TorrentClient:
 
             current = time.time()
             if (not previous) or (previous + interval < current):
-                # if not previous:
-                response = self.tracker.connect()
+                response = await self.tracker.connect(
+                    first=previous if previous else False,
+                    uploaded=self.piece_manager.bytes_uploaded,
+                    downloaded=self.piece_manager.bytes_downloaded)
+
                 if response:
                     previous = current
                     interval = response.interval
+                    self._empty_queue()
                     for peer in response.peers:
                         self.available_peers.put_nowait(peer)
             else:
                 await asyncio.sleep(5)
-            # TODO Make periodic announce call to tracker
-
         self.stop()
+
+    def _empty_queue(self):
+        while not self.available_peers.empty():
+            self.available_peers.get_nowait()
 
     def stop(self):
         """
@@ -111,6 +117,7 @@ class TorrentClient:
         for peer in self.peers:
             peer.stop()
         self.piece_manager.close()
+        self.tracker.close()
 
     def _on_block_retrieved(self, peer_id, piece_index, block_offset, data):
         """
@@ -289,7 +296,8 @@ class PieceManager:
         """
         Close any resources used by the PieceManager (such as open files)
         """
-        os.close(self.fd)
+        if self.fd:
+            os.close(self.fd)
 
     @property
     def complete(self):
@@ -299,6 +307,20 @@ class PieceManager:
         :return: True if all pieces are fully downloaded else False
         """
         return len(self.have_pieces) == self.total_pieces
+
+    @property
+    def bytes_downloaded(self) -> int:
+        """
+        Get the number of bytes downloaded.
+
+        This method Only counts full, verified, pieces, not single blocks.
+        """
+        return len(self.have_pieces) * self.torrent.piece_length
+
+    @property
+    def bytes_uploaded(self) -> int:
+        # TODO Add support for sending data
+        return 0
 
     def add_peer(self, peer_id, bitfield):
         """
@@ -311,7 +333,8 @@ class PieceManager:
         Updates the information about which pieces a peer has (reflects a Have
         message).
         """
-        self.peers[peer_id][index] = 1
+        if peer_id in self.peers:
+            self.peers[peer_id][index] = 1
 
     def remove_peer(self, peer_id):
         """
@@ -411,6 +434,8 @@ class PieceManager:
                                  'piece {piece}'.format(
                                     block=request.block.offset,
                                     piece=request.block.piece))
+                    # Reset expiration timer
+                    request.added = current
                     return request.block
         return None
 

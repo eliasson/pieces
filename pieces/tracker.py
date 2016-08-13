@@ -14,13 +14,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import aiohttp
 import random
 import logging
 import socket
 from struct import unpack
 from urllib.parse import urlencode
-from urllib.request import urlopen
 
 from . import bencoding
 
@@ -114,26 +113,45 @@ class Tracker:
     def __init__(self, torrent):
         self.torrent = torrent
         self.peer_id = _calculate_peer_id()
-        self._first_contact = True
+        self.http_client = aiohttp.ClientSession()
 
-    def connect(self):
+    async def connect(self,
+                      first: bool=None,
+                      uploaded: int=0,
+                      downloaded: int=0):
         """
-        Connects to the tracker via the announce URL to retrieve the list of
-        peers possible to connect to.
+        Makes the announce call to the tracker to update with our statistics
+        as well as get a list of available peers to connect to.
+
+        If the call was successful, the list of peers will be updated as a
+        result of calling this function.
+
+        :param first: Whether or not this is the first announce call
+        :param uploaded: The total number of bytes uploaded
+        :param downloaded: The total number of bytes downloaded
         """
-        params = self._construct_tracker_parameters()
-        if self._first_contact:
+        params = {
+            'info_hash': self.torrent.info_hash,
+            'peer_id': self.peer_id,
+            'port': 6889,
+            'uploaded': uploaded,
+            'downloaded': downloaded,
+            'left': self.torrent.total_size - downloaded,
+            'compact': 1}
+        if first:
             params['event'] = 'started'
-            params['left'] = self.torrent.total_size
 
         url = self.torrent.announce + '?' + urlencode(params)
         logging.info('Connecting to tracker at: ' + url)
 
-        # TODO Make the HTTP request async
-        with urlopen(url) as f:
-            if not f.getcode() == 200:
+        async with self.http_client.get(url) as response:
+            if not response.status == 200:
                 raise ConnectionError('Unable to connect to tracker')
-            return TrackerResponse(bencoding.Decoder(f.read()).decode())
+            data = await response.read()
+            return TrackerResponse(bencoding.Decoder(data).decode())
+
+    def close(self):
+        self.http_client.close()
 
     def _construct_tracker_parameters(self):
         """
