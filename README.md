@@ -6,6 +6,9 @@ The client is not a practical BitTorrent client, it lacks too many
 features to really be useful. It was implemented for fun in order to
 learn more about BitTorrent as well as Python's asyncio library.
 
+See http://markuseliasson.se/article/bittorrent-in-python/ for a walkthrough
+on the BitTorrent protocol and how pieces works under the hood.
+
 The client currently only support downloading of data, although adding
 the remaining features regarding seeding and multi-file should not be
 that hard.
