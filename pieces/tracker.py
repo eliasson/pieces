@@ -167,7 +167,7 @@ class Tracker:
             if "failure" in message:
                 raise ConnectionError('Unable to connect to tracker: {}'.format(message))
 
-        # a successful tracker response will have bencoded data, so it's safe to ignore this exception
+        # a successful tracker response will have non-uncicode data, so it's a safe to bet ignore this exception.
         except UnicodeDecodeError:
             pass
 
