@@ -150,13 +150,13 @@ class Tracker:
             if not response.status == 200:
                 raise ConnectionError('Unable to connect to tracker: status code {}'.format(response.status))
             data = await response.read()
-            self.raise_for_status(data)
+            self.raise_for_error(data)
             return TrackerResponse(bencoding.Decoder(data).decode())
 
     def close(self):
         self.http_client.close()
 
-    def raise_for_status(self, tracker_response):
+    def raise_for_error(self, tracker_response):
         """
         A (hacky) fix to detect errors by tracker even when the response has a status code of 200  
         """
