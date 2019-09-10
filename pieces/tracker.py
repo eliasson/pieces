@@ -33,6 +33,7 @@ class TrackerResponse:
     the tracker might have returned an error (stated in the `failure`
     property).
     """
+
     def __init__(self, response: dict):
         self.response = response
 
@@ -99,10 +100,10 @@ class TrackerResponse:
                "complete: {complete}\n" \
                "interval: {interval}\n" \
                "peers: {peers}\n".format(
-                incomplete=self.incomplete,
-                complete=self.complete,
-                interval=self.interval,
-                peers=", ".join([x for (x, _) in self.peers]))
+                   incomplete=self.incomplete,
+                   complete=self.complete,
+                   interval=self.interval,
+                   peers=", ".join([x for (x, _) in self.peers]))
 
 
 class Tracker:
@@ -110,15 +111,16 @@ class Tracker:
     Represents the connection to a tracker for a given Torrent that is either
     under download or seeding state.
     """
+
     def __init__(self, torrent):
         self.torrent = torrent
         self.peer_id = _calculate_peer_id()
         self.http_client = aiohttp.ClientSession()
 
     async def connect(self,
-                      first: bool=None,
-                      uploaded: int=0,
-                      downloaded: int=0):
+                      first: bool = None,
+                      uploaded: int = 0,
+                      downloaded: int = 0):
         """
         Makes the announce call to the tracker to update with our statistics
         as well as get a list of available peers to connect to.
@@ -146,12 +148,28 @@ class Tracker:
 
         async with self.http_client.get(url) as response:
             if not response.status == 200:
-                raise ConnectionError('Unable to connect to tracker')
+                raise ConnectionError('Unable to connect to tracker: status code {}'.format(response.status))
             data = await response.read()
+            self.raise_for_error(data)
             return TrackerResponse(bencoding.Decoder(data).decode())
 
     def close(self):
         self.http_client.close()
+
+    def raise_for_error(self, tracker_response):
+        """
+        A (hacky) fix to detect errors by tracker even when the response has a status code of 200  
+        """
+        try:
+            # a tracker response containing an error will have a utf-8 message only.
+            # see: https://wiki.theory.org/index.php/BitTorrentSpecification#Tracker_Response
+            message = tracker_response.decode("utf-8")
+            if "failure" in message:
+                raise ConnectionError('Unable to connect to tracker: {}'.format(message))
+
+        # a successful tracker response will have non-uncicode data, so it's a safe to bet ignore this exception.
+        except UnicodeDecodeError:
+            pass
 
     def _construct_tracker_parameters(self):
         """
