@@ -373,7 +373,7 @@ class PieceManager:
         if not block:
             block = self._next_ongoing(peer_id)
             if not block:
-                block = self._get_rarest_piece().next_request()
+                block = self._get_rarest_piece(peer_id).next_request()
         return block
 
     def block_received(self, peer_id, piece_index, block_offset, data):
@@ -458,7 +458,7 @@ class PieceManager:
                     return block
         return None
 
-    def _get_rarest_piece(self):
+    def _get_rarest_piece(self, peer_id):
         """
         Given the current list of missing pieces, get the
         rarest one first (i.e. a piece which fewest -- but non-zero -- of its
@@ -466,12 +466,14 @@ class PieceManager:
         """
         piece_count = defaultdict(int)
         for piece in self.missing_pieces:
+            if not self.peers[peer_id][piece.index]:
+                continue
             for p in self.peers:
                 if self.peers[p][piece.index]:
                     piece_count[piece] += 1
 
         rarest_piece = min(piece_count, key=lambda p: piece_count[p])
-        self.missing_pieces.pop(rarest_piece.index)
+        self.missing_pieces.remove(rarest_piece)
         self.ongoing_pieces.append(rarest_piece)
         return rarest_piece
 

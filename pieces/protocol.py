@@ -38,6 +38,19 @@ class ProtocolError(BaseException):
     pass
 
 
+class Peer:
+    def __init__(self, identitifer, reader, writer):
+        self.identifier = identitifer
+        self.reader = reader
+        self.writer = writer
+
+    def __hash__(self):
+        return self.identifier
+
+    def __eq__(self, other):
+        return other is Peer and self.identifier == other.identifier
+
+
 class PeerConnection:
     """
     A peer connection used to download and upload pieces.
@@ -168,7 +181,7 @@ class PeerConnection:
                 logging.exception('An error occurred')
                 self.cancel()
                 raise e
-            self.cancel()
+            # self.cancel()
 
     def cancel(self):
         """
@@ -220,7 +233,6 @@ class PeerConnection:
         buf = b''
         tries = 1
         while len(buf) < Handshake.length and tries < 10:
-            print("trying to read")
             tries += 1
             buf = await self.reader.read(PeerStreamIterator.CHUNK_SIZE)
 
