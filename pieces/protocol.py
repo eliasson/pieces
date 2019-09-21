@@ -38,19 +38,6 @@ class ProtocolError(BaseException):
     pass
 
 
-class Peer:
-    def __init__(self, identitifer, reader, writer):
-        self.identifier = identitifer
-        self.reader = reader
-        self.writer = writer
-
-    def __hash__(self):
-        return self.identifier
-
-    def __eq__(self, other):
-        return other is Peer and self.identifier == other.identifier
-
-
 class PeerConnection:
     """
     A peer connection used to download and upload pieces.
