@@ -168,7 +168,7 @@ class PeerConnection:
                 logging.exception('An error occurred')
                 self.cancel()
                 raise e
-            # self.cancel()
+            self.cancel()
 
     def cancel(self):
         """
