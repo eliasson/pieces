@@ -21,7 +21,7 @@ import math
 import os
 import time
 from asyncio import Queue
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 from hashlib import sha1
 
 from pieces.protocol import PeerConnection, REQUEST_SIZE
@@ -46,6 +46,7 @@ class TorrentClient:
     (or worse yet processes) we can create them all at once and they will
     be waiting until there is a peer to consume in the queue.
     """
+
     def __init__(self, torrent):
         self.tracker = Tracker(torrent)
         # The list of potential peers is the work queue, consumed by the
@@ -78,7 +79,7 @@ class TorrentClient:
         # The time we last made an announce call (timestamp)
         previous = None
         # Default interval between announce calls (in seconds)
-        interval = 30*60
+        interval = 30 * 60
 
         while True:
             if self.piece_manager.complete:
@@ -164,6 +165,7 @@ class Piece:
     to as `Block` by the unofficial specification (the official specification
     uses piece for this one as well, which is slightly confusing).
     """
+
     def __init__(self, index: int, blocks: [], hash_value):
         self.index = index
         self.blocks = blocks
@@ -233,6 +235,7 @@ class Piece:
         blocks_data = [b.data for b in retrieved]
         return b''.join(blocks_data)
 
+
 # The type used for keeping track of pending request that can be re-issued
 PendingRequest = namedtuple('PendingRequest', ['block', 'added'])
 
@@ -246,6 +249,7 @@ class PieceManager:
     The strategy on which piece to request is made as simple as possible in
     this implementation.
     """
+
     def __init__(self, torrent):
         self.torrent = torrent
         self.peers = {}
@@ -256,7 +260,7 @@ class PieceManager:
         self.max_pending_time = 300 * 1000  # 5 minutes
         self.missing_pieces = self._initiate_pieces()
         self.total_pieces = len(torrent.pieces)
-        self.fd = os.open(self.torrent.output_file,  os.O_RDWR | os.O_CREAT)
+        self.fd = os.open(self.torrent.output_file, os.O_RDWR | os.O_CREAT)
 
     def _initiate_pieces(self) -> [Piece]:
         """
@@ -369,7 +373,7 @@ class PieceManager:
         if not block:
             block = self._next_ongoing(peer_id)
             if not block:
-                block = self._next_missing(peer_id)
+                block = self._get_rarest_piece().next_request()
         return block
 
     def block_received(self, peer_id, piece_index, block_offset, data):
@@ -390,7 +394,7 @@ class PieceManager:
         # Remove from pending requests
         for index, request in enumerate(self.pending_blocks):
             if request.block.piece == piece_index and \
-               request.block.offset == block_offset:
+                    request.block.offset == block_offset:
                 del self.pending_blocks[index]
                 break
 
@@ -408,9 +412,9 @@ class PieceManager:
                                 len(self.ongoing_pieces))
                     logging.info(
                         '{complete} / {total} pieces downloaded {per:.3f} %'
-                        .format(complete=complete,
-                                total=self.total_pieces,
-                                per=(complete/self.total_pieces)*100))
+                            .format(complete=complete,
+                                    total=self.total_pieces,
+                                    per=(complete / self.total_pieces) * 100))
                 else:
                     logging.info('Discarding corrupt piece {index}'
                                  .format(index=piece.index))
@@ -432,8 +436,8 @@ class PieceManager:
                 if request.added + self.max_pending_time < current:
                     logging.info('Re-requesting block {block} for '
                                  'piece {piece}'.format(
-                                    block=request.block.offset,
-                                    piece=request.block.piece))
+                        block=request.block.offset,
+                        piece=request.block.piece))
                     # Reset expiration timer
                     request.added = current
                     return request.block
@@ -453,6 +457,23 @@ class PieceManager:
                         PendingRequest(block, int(round(time.time() * 1000))))
                     return block
         return None
+
+    def _get_rarest_piece(self):
+        """
+        Given the current list of missing pieces, get the
+        rarest one first (i.e. a piece which fewest -- but non-zero -- of its
+        neighboring peers have)
+        """
+        piece_count = defaultdict(int)
+        for piece in self.missing_pieces:
+            for p in self.peers:
+                if self.peers[p][piece.index]:
+                    piece_count[piece] += 1
+
+        rarest_piece = min(piece_count, key=lambda p: piece_count[p])
+        self.missing_pieces.pop(rarest_piece.index)
+        self.ongoing_pieces.append(rarest_piece)
+        return rarest_piece
 
     def _next_missing(self, peer_id) -> Block:
         """
