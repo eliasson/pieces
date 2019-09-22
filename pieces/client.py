@@ -275,7 +275,7 @@ class PieceManager:
         for index, hash_value in enumerate(torrent.pieces):
             # The number of blocks for each piece can be calculated using the
             # request size as divisor for the piece length.
-            # The final piece however, will most likely have fewer blocks
+            # The final piece hqowever, will most likely have fewer blocks
             # than 'regular' pieces, and that final block might be smaller
             # then the other blocks.
             if index < (total_pieces - 1):
@@ -380,7 +380,6 @@ class PieceManager:
         """
         This method must be called when a block has successfully been retrieved
         by a peer.
-
         Once a full piece have been retrieved, a SHA1 hash control is made. If
         the check fails all the pieces blocks are put back in missing state to
         be fetched again. If the hash succeeds the partial piece is written to
@@ -394,7 +393,7 @@ class PieceManager:
         # Remove from pending requests
         for index, request in enumerate(self.pending_blocks):
             if request.block.piece == piece_index and \
-                    request.block.offset == block_offset:
+               request.block.offset == block_offset:
                 del self.pending_blocks[index]
                 break
 
@@ -412,9 +411,9 @@ class PieceManager:
                                 len(self.ongoing_pieces))
                     logging.info(
                         '{complete} / {total} pieces downloaded {per:.3f} %'
-                            .format(complete=complete,
-                                    total=self.total_pieces,
-                                    per=(complete / self.total_pieces) * 100))
+                        .format(complete=complete,
+                                total=self.total_pieces,
+                                per=(complete/self.total_pieces)*100))
                 else:
                     logging.info('Discarding corrupt piece {index}'
                                  .format(index=piece.index))
@@ -427,7 +426,6 @@ class PieceManager:
         Go through previously requested blocks, if any one have been in the
         requested state for longer than `MAX_PENDING_TIME` return the block to
         be re-requested.
-
         If no pending blocks exist, None is returned
         """
         current = int(round(time.time() * 1000))
@@ -436,8 +434,8 @@ class PieceManager:
                 if request.added + self.max_pending_time < current:
                     logging.info('Re-requesting block {block} for '
                                  'piece {piece}'.format(
-                        block=request.block.offset,
-                        piece=request.block.piece))
+                                    block=request.block.offset,
+                                    piece=request.block.piece))
                     # Reset expiration timer
                     request.added = current
                     return request.block
