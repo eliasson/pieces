@@ -31,7 +31,7 @@ import bitstring
 #
 #       https://wiki.theory.org/BitTorrentSpecification
 #
-REQUEST_SIZE = 2 ** 14
+REQUEST_SIZE = 2**14
 
 
 class ProtocolError(BaseException):
@@ -58,7 +58,6 @@ class PeerConnection:
     the next available peer from off the queue and try to connect to that one
     instead.
     """
-
     def __init__(self, queue: Queue, info_hash,
                  peer_id, piece_manager, on_block_cb=None):
         """
@@ -201,10 +200,10 @@ class PeerConnection:
 
             logging.debug('Requesting block {block} for piece {piece} '
                           'of {length} bytes from peer {peer}'.format(
-                piece=block.piece,
-                block=block.offset,
-                length=block.length,
-                peer=self.remote_id))
+                            piece=block.piece,
+                            block=block.offset,
+                            length=block.length,
+                            peer=self.remote_id))
 
             self.writer.write(message)
             await self.writer.drain()
@@ -255,9 +254,9 @@ class PeerStreamIterator:
     If the connection is dropped, something fails the iterator will abort by
     raising the `StopAsyncIteration` error ending the calling iteration.
     """
-    CHUNK_SIZE = 10 * 1024
+    CHUNK_SIZE = 10*1024
 
-    def __init__(self, reader, initial: bytes = None):
+    def __init__(self, reader, initial: bytes=None):
         self.reader = reader
         self.buffer = initial if initial else b''
 
@@ -460,11 +459,11 @@ class Handshake(PeerMessage):
         """
         return struct.pack(
             '>B19s8x20s20s',
-            19,  # Single byte (B)
-            b'BitTorrent protocol',  # String 19s
-            # Reserved 8x (pad byte, no value)
-            self.info_hash,  # String 20s
-            self.peer_id)  # String 20s
+            19,                         # Single byte (B)
+            b'BitTorrent protocol',     # String 19s
+                                        # Reserved 8x (pad byte, no value)
+            self.info_hash,             # String 20s
+            self.peer_id)               # String 20s
 
     @classmethod
     def decode(cls, data: bytes):
@@ -490,7 +489,6 @@ class KeepAlive(PeerMessage):
     Message format:
         <len=0000>
     """
-
     def __str__(self):
         return 'KeepAlive'
 
@@ -503,7 +501,6 @@ class BitField(PeerMessage):
     Message format:
         <len=0001+X><id=5><bitfield>
     """
-
     def __init__(self, data):
         self.bitfield = bitstring.BitArray(bytes=data)
 
@@ -563,7 +560,6 @@ class NotInterested(PeerMessage):
     Message format:
         <len=0001><id=3>
     """
-
     def __str__(self):
         return 'NotInterested'
 
@@ -576,7 +572,6 @@ class Choke(PeerMessage):
     Message format:
         <len=0001><id=0>
     """
-
     def __str__(self):
         return 'Choke'
 
@@ -589,7 +584,6 @@ class Unchoke(PeerMessage):
     Message format:
         <len=0001><id=1>
     """
-
     def __str__(self):
         return 'Unchoke'
 
@@ -599,7 +593,6 @@ class Have(PeerMessage):
     Represents a piece successfully downloaded by the remote peer. The piece
     is a zero based index of the torrents pieces
     """
-
     def __init__(self, index: int):
         self.index = index
 
@@ -631,7 +624,6 @@ class Request(PeerMessage):
     Message format:
         <len=0013><id=6><index><begin><length>
     """
-
     def __init__(self, index: int, begin: int, length: int = REQUEST_SIZE):
         """
         Constructs the Request message.
@@ -706,7 +698,7 @@ class Piece(PeerMessage):
             length=len(data)))
         length = struct.unpack('>I', data[:4])[0]
         parts = struct.unpack('>IbII' + str(length - Piece.length) + 's',
-                              data[:length + 4])
+                              data[:length+4])
         return cls(parts[2], parts[3], parts[4])
 
     def __str__(self):
@@ -721,7 +713,6 @@ class Cancel(PeerMessage):
     Message format:
          <len=0013><id=8><index><begin><length>
     """
-
     def __init__(self, index, begin, length: int = REQUEST_SIZE):
         self.index = index
         self.begin = begin

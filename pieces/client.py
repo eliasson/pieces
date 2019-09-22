@@ -46,7 +46,6 @@ class TorrentClient:
     (or worse yet processes) we can create them all at once and they will
     be waiting until there is a peer to consume in the queue.
     """
-
     def __init__(self, torrent):
         self.tracker = Tracker(torrent)
         # The list of potential peers is the work queue, consumed by the
@@ -79,7 +78,7 @@ class TorrentClient:
         # The time we last made an announce call (timestamp)
         previous = None
         # Default interval between announce calls (in seconds)
-        interval = 30 * 60
+        interval = 30*60
 
         while True:
             if self.piece_manager.complete:
@@ -165,7 +164,6 @@ class Piece:
     to as `Block` by the unofficial specification (the official specification
     uses piece for this one as well, which is slightly confusing).
     """
-
     def __init__(self, index: int, blocks: [], hash_value):
         self.index = index
         self.blocks = blocks
@@ -235,7 +233,6 @@ class Piece:
         blocks_data = [b.data for b in retrieved]
         return b''.join(blocks_data)
 
-
 # The type used for keeping track of pending request that can be re-issued
 PendingRequest = namedtuple('PendingRequest', ['block', 'added'])
 
@@ -249,7 +246,6 @@ class PieceManager:
     The strategy on which piece to request is made as simple as possible in
     this implementation.
     """
-
     def __init__(self, torrent):
         self.torrent = torrent
         self.peers = {}
@@ -260,7 +256,7 @@ class PieceManager:
         self.max_pending_time = 300 * 1000  # 5 minutes
         self.missing_pieces = self._initiate_pieces()
         self.total_pieces = len(torrent.pieces)
-        self.fd = os.open(self.torrent.output_file, os.O_RDWR | os.O_CREAT)
+        self.fd = os.open(self.torrent.output_file,  os.O_RDWR | os.O_CREAT)
 
     def _initiate_pieces(self) -> [Piece]:
         """
@@ -275,7 +271,7 @@ class PieceManager:
         for index, hash_value in enumerate(torrent.pieces):
             # The number of blocks for each piece can be calculated using the
             # request size as divisor for the piece length.
-            # The final piece hqowever, will most likely have fewer blocks
+            # The final piece however, will most likely have fewer blocks
             # than 'regular' pieces, and that final block might be smaller
             # then the other blocks.
             if index < (total_pieces - 1):
@@ -380,6 +376,7 @@ class PieceManager:
         """
         This method must be called when a block has successfully been retrieved
         by a peer.
+
         Once a full piece have been retrieved, a SHA1 hash control is made. If
         the check fails all the pieces blocks are put back in missing state to
         be fetched again. If the hash succeeds the partial piece is written to
@@ -426,6 +423,7 @@ class PieceManager:
         Go through previously requested blocks, if any one have been in the
         requested state for longer than `MAX_PENDING_TIME` return the block to
         be re-requested.
+
         If no pending blocks exist, None is returned
         """
         current = int(round(time.time() * 1000))
@@ -455,7 +453,6 @@ class PieceManager:
                         PendingRequest(block, int(round(time.time() * 1000))))
                     return block
         return None
-
     def _get_rarest_piece(self, peer_id):
         """
         Given the current list of missing pieces, get the
