@@ -453,10 +453,11 @@ class PieceManager:
                         PendingRequest(block, int(round(time.time() * 1000))))
                     return block
         return None
+
     def _get_rarest_piece(self, peer_id):
         """
         Given the current list of missing pieces, get the
-        rarest one first (i.e. a piece which fewest -- but non-zero -- of its
+        rarest one first (i.e. a piece which fewest of its
         neighboring peers have)
         """
         piece_count = defaultdict(int)
