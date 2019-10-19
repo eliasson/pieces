@@ -21,7 +21,7 @@ import math
 import os
 import time
 from asyncio import Queue
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 from hashlib import sha1
 
 from pieces.protocol import PeerConnection, REQUEST_SIZE
@@ -369,7 +369,7 @@ class PieceManager:
         if not block:
             block = self._next_ongoing(peer_id)
             if not block:
-                block = self._next_missing(peer_id)
+                block = self._get_rarest_piece(peer_id).next_request()
         return block
 
     def block_received(self, peer_id, piece_index, block_offset, data):
@@ -453,6 +453,25 @@ class PieceManager:
                         PendingRequest(block, int(round(time.time() * 1000))))
                     return block
         return None
+
+    def _get_rarest_piece(self, peer_id):
+        """
+        Given the current list of missing pieces, get the
+        rarest one first (i.e. a piece which fewest of its
+        neighboring peers have)
+        """
+        piece_count = defaultdict(int)
+        for piece in self.missing_pieces:
+            if not self.peers[peer_id][piece.index]:
+                continue
+            for p in self.peers:
+                if self.peers[p][piece.index]:
+                    piece_count[piece] += 1
+
+        rarest_piece = min(piece_count, key=lambda p: piece_count[p])
+        self.missing_pieces.remove(rarest_piece)
+        self.ongoing_pieces.append(rarest_piece)
+        return rarest_piece
 
     def _next_missing(self, peer_id) -> Block:
         """

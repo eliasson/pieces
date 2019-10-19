@@ -217,7 +217,9 @@ class PeerConnection:
         await self.writer.drain()
 
         buf = b''
-        while len(buf) < Handshake.length:
+        tries = 1
+        while len(buf) < Handshake.length and tries < 10:
+            tries += 1
             buf = await self.reader.read(PeerStreamIterator.CHUNK_SIZE)
 
         response = Handshake.decode(buf[:Handshake.length])
