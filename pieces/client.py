@@ -25,9 +25,10 @@ from collections import namedtuple, defaultdict
 from hashlib import sha1
 
 from pieces.protocol import PeerConnection, REQUEST_SIZE
-from pieces.tracker import Tracker
 
 # The number of max peer connections per TorrentClient
+from pieces.trackers.http_tracker import HTTPTracker
+
 MAX_PEER_CONNECTIONS = 40
 
 
@@ -47,7 +48,7 @@ class TorrentClient:
     be waiting until there is a peer to consume in the queue.
     """
     def __init__(self, torrent):
-        self.tracker = Tracker(torrent)
+        self.tracker = HTTPTracker(torrent)
         # The list of potential peers is the work queue, consumed by the
         # PeerConnections
         self.available_peers = Queue()
@@ -78,7 +79,7 @@ class TorrentClient:
         # The time we last made an announce call (timestamp)
         previous = None
         # Default interval between announce calls (in seconds)
-        interval = 30*60
+        interval = 30 * 60
 
         while True:
             if self.piece_manager.complete:
