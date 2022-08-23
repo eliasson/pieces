@@ -23,6 +23,7 @@ import time
 from asyncio import Queue
 from collections import namedtuple, defaultdict
 from hashlib import sha1
+import bitstring
 
 from pieces.protocol import PeerConnection, REQUEST_SIZE
 from pieces.tracker import Tracker
@@ -322,6 +323,13 @@ class PieceManager:
         # TODO Add support for sending data
         return 0
 
+    def add_peer_without_bitfield(self, peer_id):
+        """ 
+        Adds a peer without requiring a bitfield(Note sending a bitfield is optional.).
+        """
+        bitfield = bitstring.BitArray(int=0, length=self.total_pieces)
+        self.peers[peer_id] = bitfield
+
     def add_peer(self, peer_id, bitfield):
         """
         Adds a peer and the bitfield representing the pieces the peer has.
@@ -369,7 +377,11 @@ class PieceManager:
         if not block:
             block = self._next_ongoing(peer_id)
             if not block:
-                block = self._get_rarest_piece(peer_id).next_request()
+                piece = self._get_rarest_piece(peer_id)
+                if piece == None:
+                    return None
+                else:
+                    block = piece.next_request()
         return block
 
     def block_received(self, peer_id, piece_index, block_offset, data):
@@ -468,6 +480,8 @@ class PieceManager:
                 if self.peers[p][piece.index]:
                     piece_count[piece] += 1
 
+        if len(piece_count) == 0:
+            return None
         rarest_piece = min(piece_count, key=lambda p: piece_count[p])
         self.missing_pieces.remove(rarest_piece)
         self.ongoing_pieces.append(rarest_piece)
@@ -499,3 +513,4 @@ class PieceManager:
         pos = piece.index * self.torrent.piece_length
         os.lseek(self.fd, pos, os.SEEK_SET)
         os.write(self.fd, piece.data)
+    

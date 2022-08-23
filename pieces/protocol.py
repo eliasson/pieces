@@ -105,6 +105,9 @@ class PeerConnection:
                 # Sending BitField is optional and not needed when client does
                 # not have any pieces. Thus we do not send any bitfield message
 
+                # Some peers don't sent any BitField and rely on Have messages.
+                # Thus we add a peer wihout any BitField.
+                self.piece_manager.add_peer_without_bitfield(self.remote_id)
                 # The default state for a connection is that peer is not
                 # interested and we are choked
                 self.my_state.append('choked')
@@ -116,6 +119,7 @@ class PeerConnection:
                 # Start reading responses as a stream of messages for as
                 # long as the connection is open and data is transmitted
                 async for message in PeerStreamIterator(self.reader, buffer):
+                    logging.debug('Message received is of type {}'.format(type(message)))
                     if 'stopped' in self.my_state:
                         break
                     if type(message) is BitField:
@@ -154,9 +158,10 @@ class PeerConnection:
                     if 'choked' not in self.my_state:
                         if 'interested' in self.my_state:
                             if 'pending_request' not in self.my_state:
-                                self.my_state.append('pending_request')
-                                await self._request_piece()
-
+                                chk = await self._request_piece()
+                                if chk:
+                                    self.my_state.append('pending_request')
+                                
             except ProtocolError as e:
                 logging.exception('Protocol error')
             except (ConnectionRefusedError, TimeoutError):
@@ -207,6 +212,9 @@ class PeerConnection:
 
             self.writer.write(message)
             await self.writer.drain()
+            return True 
+        else:
+            return False
 
     async def _handshake(self):
         """
@@ -321,7 +329,7 @@ class PeerStreamIterator:
                 self.buffer = self.buffer[header_length + message_length:]
                 return KeepAlive()
 
-            if len(self.buffer) >= message_length:
+            if len(self.buffer) >= message_length+header_length:
                 message_id = struct.unpack('>b', self.buffer[4:5])[0]
 
                 def _consume():
