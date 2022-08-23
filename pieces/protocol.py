@@ -316,6 +316,9 @@ class PeerStreamIterator:
             message_length = struct.unpack('>I', self.buffer[0:4])[0]
 
             if message_length == 0:
+                logging.debug('Got a KeepAlive message')
+                # Call consume 
+                self.buffer = self.buffer[header_length + message_length:]
                 return KeepAlive()
 
             if len(self.buffer) >= message_length:
