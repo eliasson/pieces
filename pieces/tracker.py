@@ -80,6 +80,7 @@ class TrackerResponse:
         # where the peers field is a list of dictionaries and one where all
         # the peers are encoded in a single string
         peers = self.response[b'peers']
+        logging.debug('Type of peers is {0}, and len is {1}'.format(type(peers), len(peers))) 
         if type(peers) == list:
             # TODO Implement support for dictionary peer list
             logging.debug('Dictionary model peers are returned by tracker')
@@ -144,6 +145,8 @@ class Tracker:
             params['event'] = 'started'
 
         url = self.torrent.announce + '?' + urlencode(params)
+        logging.debug(self.torrent.announce_list)
+        logging.debug(self.torrent.announce) 
         logging.info('Connecting to tracker at: ' + url)
 
         async with self.http_client.get(url) as response:
@@ -170,22 +173,6 @@ class Tracker:
         # a successful tracker response will have non-uncicode data, so it's a safe to bet ignore this exception.
         except UnicodeDecodeError:
             pass
-
-    def _construct_tracker_parameters(self):
-        """
-        Constructs the URL parameters used when issuing the announce call
-        to the tracker.
-        """
-        return {
-            'info_hash': self.torrent.info_hash,
-            'peer_id': self.peer_id,
-            'port': 6889,
-            # TODO Update stats when communicating with tracker
-            'uploaded': 0,
-            'downloaded': 0,
-            'left': 0,
-            'compact': 1}
-
 
 def _calculate_peer_id():
     """
