@@ -17,11 +17,12 @@
 
 from hashlib import sha1
 from collections import namedtuple
+import os
 
 from . import bencoding
 
 # Represents the files within the torrent (i.e. the files to write to disk)
-TorrentFile = namedtuple('TorrentFile', ['name', 'length'])
+TorrentFile = namedtuple('TorrentFile', ['path', 'length'])
 
 
 class Torrent:
@@ -47,12 +48,18 @@ class Torrent:
         Identifies the files included in this torrent
         """
         if self.multi_file:
-            # TODO Add support for multi-file torrents
-            raise RuntimeError('Multi-file torrents is not supported!')
-        self.files.append(
-            TorrentFile(
-                self.meta_info[b'info'][b'name'].decode('utf-8'),
-                self.meta_info[b'info'][b'length']))
+            name = self.meta_info[b'info'][b'name'].decode('utf-8')
+            if not os.path.exists(name):
+                os.mkdir(name); 
+            for file in self.meta_info[b'info'][b'files']:
+                curr_path = (b'/'.join(file[b'path'])).decode('utf-8')
+                curr_path = os.path.join(self.meta_info[b'info'][b'name'].decode('utf-8'), curr_path)
+                self.files.append(TorrentFile(curr_path, file[b'length'])) 
+        else:
+            self.files.append(
+                TorrentFile(
+                    self.meta_info[b'info'][b'name'].decode('utf-8'),
+                    self.meta_info[b'info'][b'length']))
 
     @property
     def announce(self) -> str:
@@ -60,6 +67,16 @@ class Torrent:
         The announce URL to the tracker.
         """
         return self.meta_info[b'announce'].decode('utf-8')
+    
+    @property
+    def announce_list(self) -> list:
+        """ 
+        Returns announce list of trackers. 
+        """
+        if b'announce-list' in self.meta_info.keys():
+            return [[a.decode('utf-8') for a in x] for x in self.meta_info[b'announce-list']]
+        else:
+            return None
 
     @property
     def multi_file(self) -> bool:
@@ -86,8 +103,9 @@ class Torrent:
         :return: The total size (in bytes) for this torrent's data.
         """
         if self.multi_file:
-            raise RuntimeError('Multi-file torrents is not supported!')
-        return self.files[0].length
+            return sum(file.length for file in self.files) 
+        else:
+            return self.files[0].length
 
     @property
     def pieces(self):
@@ -106,7 +124,12 @@ class Torrent:
 
     @property
     def output_file(self):
-        return self.meta_info[b'info'][b'name'].decode('utf-8')
+        if self.multi_file:
+            if not os.path.exists('.pieces_tmp'):
+                os.mkdir('.pieces_tmp')
+            return os.path.join('.pieces_tmp', 'tmp')
+        else:
+            return self.meta_info[b'info'][b'name'].decode('utf-8')
 
     def __str__(self):
         return 'Filename: {0}\n' \

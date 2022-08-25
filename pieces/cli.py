@@ -35,7 +35,7 @@ def main():
 
     args = parser.parse_args()
     if args.verbose:
-        logging.basicConfig(level=logging.INFO)
+        logging.basicConfig(filename='logfile.log', level=logging.INFO)
 
     loop = asyncio.get_event_loop()
     client = TorrentClient(Torrent(args.torrent))

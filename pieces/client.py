@@ -70,11 +70,11 @@ class TorrentClient:
         if the download is aborted this method will complete.
         """
         self.peers = [PeerConnection(self.available_peers,
-                                     self.tracker.torrent.info_hash,
-                                     self.tracker.peer_id,
-                                     self.piece_manager,
-                                     self._on_block_retrieved)
-                      for _ in range(MAX_PEER_CONNECTIONS)]
+                                    self.tracker.torrent.info_hash,
+                                    self.tracker.peer_id,
+                                    self.piece_manager,
+                                    self._on_block_retrieved)
+                        for _ in range(MAX_PEER_CONNECTIONS)]
 
         # The time we last made an announce call (timestamp)
         previous = None
@@ -83,6 +83,7 @@ class TorrentClient:
 
         while True:
             if self.piece_manager.complete:
+                self.piece_manager._organize_files()
                 logging.info('Torrent fully downloaded!')
                 break
             if self.abort:
@@ -96,6 +97,7 @@ class TorrentClient:
                     uploaded=self.piece_manager.bytes_uploaded,
                     downloaded=self.piece_manager.bytes_downloaded)
 
+                logging.debug(response)
                 if response:
                     previous = current
                     interval = response.interval
@@ -233,9 +235,6 @@ class Piece:
         retrieved = sorted(self.blocks, key=lambda b: b.offset)
         blocks_data = [b.data for b in retrieved]
         return b''.join(blocks_data)
-
-# The type used for keeping track of pending request that can be re-issued
-PendingRequest = namedtuple('PendingRequest', ['block', 'added'])
 
 
 class PieceManager:
@@ -401,8 +400,8 @@ class PieceManager:
 
         # Remove from pending requests
         for index, request in enumerate(self.pending_blocks):
-            if request.block.piece == piece_index and \
-               request.block.offset == block_offset:
+            if request['block'].piece == piece_index and \
+               request['block'].offset == block_offset:
                 del self.pending_blocks[index]
                 break
 
@@ -440,15 +439,15 @@ class PieceManager:
         """
         current = int(round(time.time() * 1000))
         for request in self.pending_blocks:
-            if self.peers[peer_id][request.block.piece]:
-                if request.added + self.max_pending_time < current:
+            if self.peers[peer_id][request['block'].piece]:
+                if request['added'] + self.max_pending_time < current:
                     logging.info('Re-requesting block {block} for '
                                  'piece {piece}'.format(
-                                    block=request.block.offset,
-                                    piece=request.block.piece))
+                                    block=request['block'].offset,
+                                    piece=request['block'].piece))
                     # Reset expiration timer
-                    request.added = current
-                    return request.block
+                    request['added'] = current
+                    return request['block']
         return None
 
     def _next_ongoing(self, peer_id) -> Block:
@@ -462,7 +461,7 @@ class PieceManager:
                 block = piece.next_request()
                 if block:
                     self.pending_blocks.append(
-                        PendingRequest(block, int(round(time.time() * 1000))))
+                        {'block':block, 'added':int(round(time.time()*1000))})
                     return block
         return None
 
@@ -513,4 +512,27 @@ class PieceManager:
         pos = piece.index * self.torrent.piece_length
         os.lseek(self.fd, pos, os.SEEK_SET)
         os.write(self.fd, piece.data)
-    
+
+    def _organize_files(self):
+        """ 
+        Organize the file strucuture from a single file to as provided in meta_info. 
+        """
+        if not self.torrent.multi_file: 
+            return
+        #if not self.complete: 
+        #    raise RuntimeError('organize_files called before completing download!')
+        pos = 0 
+        for file in self.torrent.files: 
+            os.lseek(self.fd, pos, os.SEEK_SET)
+            buffer = os.read(self.fd, file.length) 
+            pos += file.length
+
+            os.makedirs(os.path.dirname(file.path), exist_ok=True)
+            tmp_fd = os.open(file.path,  os.O_RDWR | os.O_CREAT)
+            os.write(tmp_fd, buffer) 
+            os.close(tmp_fd) 
+
+        # Remove the redundant tmp files 
+        os.remove(self.torrent.output_file)
+
+        return 
