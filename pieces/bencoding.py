@@ -76,7 +76,7 @@ class Decoder:
         """
         if self._index + 1 >= len(self._data):
             return None
-        return self._data[self._index:self._index + 1]
+        return self._data[self._index]
 
     def _consume(self) -> bytes:
         """
